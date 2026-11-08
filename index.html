@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="connect-src https://rpc.mainnet.near.org; object-src 'none'; base-uri 'none'">
+<title>NEAR Claim Check — Evidence Inspector</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="mark" aria-hidden="true">◆</span><div><h1>NEAR Claim Check</h1><p>Evidence Inspector · rules-based · no AI</p></div></div>
+  <p class="tag">Compares what a token's own docs say with what NEAR mainnet shows at one exact block. Shows evidence, never verdicts.</p>
+</header>
+<main>
+  <div id="boot" class="panel boot">Loading the inspector… If this message stays, the page's scripts could not run in this viewer. Try opening the file in Chrome itself (not a file-manager preview).</div>
+  <noscript><div class="panel err"><h2>JavaScript is off</h2><p>This inspector needs JavaScript to show the token cards.</p></div></noscript>
+  <section class="controls" aria-label="Data mode">
+    <div class="mode" role="radiogroup" aria-label="Data source">
+      <label><input type="radio" name="mode" value="snapshot" checked> Cached snapshot</label>
+      <label><input type="radio" name="mode" value="live"> Live public RPC</label>
+    </div>
+    <p id="modeNote" class="note"></p>
+  </section>
+  <section id="cards" class="cards" aria-label="Tokens"></section>
+  <section id="detail" class="detail" aria-live="polite"></section>
+  <section class="panel about">
+    <h2>About &amp; limitations</h2>
+    <ul class="note">
+      <li>Rules-based evidence viewer. No AI, no wallet, no sign-up, no tracking.</li>
+      <li>Three fixed tokens with hand-curated source quotes. It does not read arbitrary websites.</li>
+      <li>“Differs” means the numbers are different. The cause is not checked and it is not an accusation.</li>
+      <li>No full-access keys does not prove a contract is unchangeable. A code hash identifies code; it does not verify it.</li>
+      <li>Live mode uses the free public RPC, which can be slow, rate-limited or refused by some file viewers.</li>
+      <li>The download hash proves the file was not edited after export, not that any claim is true. Not financial advice.</li>
+    </ul>
+  </section>
+  <section class="verify">
+    <h2>Check a downloaded evidence file</h2>
+    <p class="note">Recomputes the SHA-256 of the bundle's payload. A match means the file was not edited after export, not that any claim is true.</p>
+    <input type="file" id="verifyFile" accept="application/json">
+    <p id="verifyOut" class="note"></p>
+  </section>
+</main>
+<footer>Not financial advice. No wallet, no sign-up, no tracking. Live mode sends read-only queries to rpc.mainnet.near.org only.</footer>
+<script src="snapshot.js"></script>
+<script src="lib.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

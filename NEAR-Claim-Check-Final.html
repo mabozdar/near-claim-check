@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="connect-src https://rpc.mainnet.near.org; object-src 'none'; base-uri 'none'">
+<title>NEAR Claim Check — Evidence Inspector</title>
+<style>
+:root{--bg:#0d1117;--panel:#141a23;--line:#243041;--ink:#e8edf3;--mute:#93a1b3;--acc:#5eead4;--warn:#fbbf24;--info:#93c5fd;--r:14px;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%;text-size-adjust:100%}body{font-size:16px;overflow-wrap:anywhere;margin:0;background:radial-gradient(1200px 600px at 10% -10%,#16302c 0,transparent 60%),var(--bg);color:var(--ink);line-height:1.5}
+.top,main,footer{max-width:1100px;margin:0 auto;padding:24px 20px}
+.brand{display:flex;gap:14px;align-items:center}.mark{font-size:28px;color:var(--acc)}h1{margin:0;font-size:26px;letter-spacing:.2px}.brand p{margin:0;color:var(--mute);font-size:13px;text-transform:uppercase;letter-spacing:1.2px}
+.tag{color:var(--mute);max-width:640px}
+.controls{display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin-bottom:18px}
+.mode{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px}
+.mode label{padding:8px 14px;border-radius:999px;cursor:pointer;font-size:14px}.mode input{position:absolute;opacity:0}
+.mode label:has(input:checked){background:var(--acc);color:#04201b;font-weight:600}
+.mode label:focus-within{outline:2px solid var(--info)}
+.note{color:var(--mute);font-size:13px;margin:4px 0}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:8px}
+.card.sel{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc) inset}
+.card h3{margin:0;font-size:20px}.card .kind{color:var(--mute);font-size:13px;min-height:38px}
+.card code{font-size:11.5px;color:var(--info);word-break:break-all}
+button{font:inherit;background:var(--acc);color:#04201b;border:0;border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer}
+button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}button:disabled{opacity:.5;cursor:wait}
+.detail{margin-top:22px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:20px;margin-bottom:14px}
+.panel h2{margin:0 0 10px;font-size:18px}.panel h4{margin:14px 0 4px;font-size:13px;color:var(--mute);text-transform:uppercase;letter-spacing:1px}
+.badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid}
+.b-snap{color:var(--warn);border-color:var(--warn)}.b-live{color:var(--acc);border-color:var(--acc)}.b-diff{color:var(--warn);border-color:var(--warn)}.b-ok{color:var(--acc);border-color:var(--acc)}.b-info{color:var(--info);border-color:var(--info)}
+.big{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:20px;word-break:break-all}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;word-break:break-all}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+blockquote{margin:6px 0;padding:8px 12px;border-left:3px solid var(--acc);background:#0f151d;border-radius:6px}
+.err{border-color:#f87171}.err h2{color:#f87171}
+a{color:var(--info)}
+.verify{margin-top:26px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+.verify h2{margin:0;font-size:16px}
+footer{color:var(--mute);font-size:12px}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+@media (max-width:560px){h1{font-size:22px}.big{font-size:16px}}
+.mode label.on{background:var(--acc);color:#04201b;font-weight:600}
+.boot{color:var(--warn)}
+@media (max-width:480px){.top,main,footer{padding:16px 12px}.cards{grid-template-columns:1fr}.panel{padding:14px}.mode label{padding:8px 10px;font-size:13px}}
+html.phone body{font-size:18px}html.phone .top,html.phone main,html.phone footer{max-width:none;padding:16px 14px}
+html.phone .cards,html.phone .grid2{grid-template-columns:1fr}html.phone h1{font-size:28px}html.phone .card h3{font-size:24px}
+html.phone button{font-size:18px;padding:14px 16px;width:100%}html.phone .note{font-size:15px}html.phone .mono{font-size:14px}html.phone .big{font-size:20px}
+html.phone .mode label{font-size:16px;padding:10px 12px}
+.mono,.big,code{word-break:break-all;overflow-wrap:anywhere}
+.about{margin-top:20px}.about li{margin:4px 0}
+@media (max-width:480px){body{font-size:16px}.note{font-size:14px}.grid2{grid-template-columns:1fr}.card button{width:100%}}
+
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="mark" aria-hidden="true">◆</span><div><h1>NEAR Claim Check</h1><p>Evidence Inspector · rules-based · no AI</p></div></div>
+  <p class="tag">Compares what a token's own docs say with what NEAR mainnet shows at one exact block. Shows evidence, never verdicts.</p>
+</header>
+<main>
+  <div id="boot" class="panel boot">Loading the inspector… If this message stays, the page's scripts could not run in this viewer. Try opening the file in Chrome itself (not a file-manager preview).</div>
+  <noscript><div class="panel err"><h2>JavaScript is off</h2><p>This inspector needs JavaScript to show the token cards.</p></div></noscript>
+  <section class="controls" aria-label="Data mode">
+    <div class="mode" role="radiogroup" aria-label="Data source">
+      <label><input type="radio" name="mode" value="snapshot" checked> Cached snapshot</label>
+      <label><input type="radio" name="mode" value="live"> Live public RPC</label>
+    </div>
+    <p id="modeNote" class="note"></p>
+  </section>
+  <section id="cards" class="cards" aria-label="Tokens"></section>
+  <section id="detail" class="detail" aria-live="polite"></section>
+  <section class="panel about">
+    <h2>About &amp; limitations</h2>
+    <ul class="note">
+      <li>Rules-based evidence viewer. No AI, no wallet, no sign-up, no tracking.</li>
+      <li>Three fixed tokens with hand-curated source quotes. It does not read arbitrary websites.</li>
+      <li>“Differs” means the numbers are different. The cause is not checked and it is not an accusation.</li>
+      <li>No full-access keys does not prove a contract is unchangeable. A code hash identifies code; it does not verify it.</li>
+      <li>Live mode uses the free public RPC, which can be slow, rate-limited or refused by some file viewers.</li>
+      <li>The download hash proves the file was not edited after export, not that any claim is true. Not financial advice.</li>
+    </ul>
+  </section>
+  <section class="verify">
+    <h2>Check a downloaded evidence file</h2>
+    <p class="note">Recomputes the SHA-256 of the bundle's payload. A match means the file was not edited after export, not that any claim is true.</p>
+    <input type="file" id="verifyFile" accept="application/json">
+    <p id="verifyOut" class="note"></p>
+  </section>
+</main>
+<footer>Not financial advice. No wallet, no sign-up, no tracking. Live mode sends read-only queries to rpc.mainnet.near.org only.</footer>
+<script>
+/* Generated from /workspace/near-claim-check-validation (read-only originals). */
+var NCC_SNAPSHOT = {"label": "Cached snapshot", "rpc": "https://rpc.mainnet.near.org", "block": {"height": 223569575, "hash": "3CMeribA8TdF6154QcHM1PFP2C7VLz7vJHUvPYh85g4H", "timestamp_nanosec": "1794114389369620230"}, "tokens": {"token.v2.ref-finance.near": {"ft_metadata": {"jsonrpc": "2.0", "result": {"block_hash": "3CMeribA8TdF6154QcHM1PFP2C7VLz7vJHUvPYh85g4H", "block_height": 223569575, "logs": [], "result": [123, 34, 115, 112, 101, 99, 34, 58, 34, 102, 116, 45, 49, 46, 48, 46, 48, 34, 44, 34, 110, 97, 109, 101, 34, 58, 34, 82, 101, 102, 32, 70, 105, 110, 97, 110, 99, 101, 32, 84, 111, 107, 101, 110, 34, 44, 34, 115, 121, 109, 98, 111, 108, 34, 58, 34, 82, 69, 70, 34, 44, 34, 105, 99, 111, 110, 34, 58, 34, 100, 97, 116, 97, 58, 105, 109, 97, 103, 101, 47, 115, 118, 103, 43, 120, 109, 108, 44, 37, 51, 67, 115, 118, 103, 32, 120, 109, 108, 110, 115, 61, 39, 104, 116, 116, 112, 58, 47, 47, 119, 119, 119, 46, 119, 51, 46, 111, 114, 103, 47, 50, 48, 48, 48, 47, 115, 118, 103, 39, 32, 118, 105, 101, 119, 66, 111, 120, 61, 39, 49, 54, 32, 50, 52, 32, 50, 52, 56, 32, 50, 52, 56, 39, 32, 115, 116, 121, 108, 101, 61, 39, 98, 97, 99, 107, 103, 114, 111, 117, 110, 100, 58, 32, 37, 50, 51, 48, 48, 48, 39, 37, 51, 69, 37, 51, 67, 112, 97, 116, 104, 32, 100, 61, 39, 77, 49, 54, 52, 44, 49, 54, 52, 118, 53, 50, 104, 53, 50, 90, 109, 45, 52, 53, 45, 52, 53, 44, 50, 48, 46, 52, 44, 50, 48, 46, 52, 44, 50, 48, 46, 54, 45, 50, 48, 46, 54, 86, 56, 49, 72, 49, 49, 57, 90, 109, 48, 44, 49, 56, 46, 51, 57, 86, 50, 49, 54, 104, 52, 49, 86, 49, 51, 55, 46, 49, 57, 108, 45, 50, 48, 46, 54, 44, 50, 48, 46, 54, 90, 77, 49, 54, 54, 46, 53, 44, 56, 49, 72, 49, 54, 52, 118, 51, 51, 46, 56, 49, 108, 50, 54, 46, 49, 54, 45, 50, 54, 46, 49, 55, 65, 52, 48, 46, 50, 57, 44, 52, 48, 46, 50, 57, 44, 48, 44, 48, 44, 48, 44, 49, 54, 54, 46, 53, 44, 56, 49, 90, 77, 55, 50, 44, 49, 53, 51, 46, 49, 57, 86, 50, 49, 54, 104, 52, 51, 86, 49, 51, 51, 46, 52, 108, 45, 49, 49, 46, 54, 45, 49, 49, 46, 54, 49, 90, 109, 48, 45, 49, 56, 46, 51, 56, 44, 51, 49, 46, 52, 45, 51, 49, 46, 52, 76, 49, 49, 53, 44, 49, 49, 53, 86, 56, 49, 72, 55, 50, 90, 77, 50, 48, 55, 44, 49, 50, 49, 46, 53, 104, 48, 97, 52, 48, 46, 50, 57, 44, 52, 48, 46, 50, 57, 44, 48, 44, 48, 44, 48, 45, 55, 46, 54, 52, 45, 50, 51, 46, 54, 54, 76, 49, 54, 52, 44, 49, 51, 51, 46, 49, 57, 86, 49, 54, 50, 104, 50, 46, 53, 65, 52, 48, 46, 53, 44, 52, 48, 46, 53, 44, 48, 44, 48, 44, 48, 44, 50, 48, 55, 44, 49, 50, 49, 46, 53, 90, 39, 32, 102, 105, 108, 108, 61, 39, 37, 50, 51, 102, 102, 102, 39, 47, 37, 51, 69, 37, 51, 67, 112, 97, 116, 104, 32, 100, 61, 39, 77, 49, 56, 57, 32, 55, 50, 108, 50, 55, 32, 50, 55, 86, 55, 50, 104, 45, 50, 55, 122, 39, 32, 102, 105, 108, 108, 61, 39, 37, 50, 51, 48, 48, 99, 48, 56, 98, 39, 47, 37, 51, 69, 37, 51, 67, 47, 115, 118, 103, 37, 51, 69, 37, 48, 65, 34, 44, 34, 114, 101, 102, 101, 114, 101, 110, 99, 101, 34, 58, 110, 117, 108, 108, 44, 34, 114, 101, 102, 101, 114, 101, 110, 99, 101, 95, 104, 97, 115, 104, 34, 58, 110, 117, 108, 108, 44, 34, 100, 101, 99, 105, 109, 97, 108, 115, 34, 58, 49, 56, 125]}, "id": 1}, "ft_total_supply": {"jsonrpc": "2.0", "result": {"block_hash": "3CMeribA8TdF6154QcHM1PFP2C7VLz7vJHUvPYh85g4H", "block_height": 223569575, "logs": [], "result": [34, 57, 57, 57, 57, 48, 53, 48, 51, 52, 53, 53, 56, 54, 56, 51, 54, 49, 52, 50, 51, 55, 56, 52, 53, 53, 53, 34]}, "id": 1}, "account": {"jsonrpc": "2.0", "result": {"amount": "435003755541407889820639249", "block_hash": "3CMeribA8TdF6154QcHM1PFP2C7VLz7vJHUvPYh85g4H", "block_height": 223569575, "code_hash": "HagtKcVnSk6eJrg9e4X4Rpvw4ACCrpJjkrdWavLNtggZ", "locked": "0", "storage_paid_at": 0, "storage_usage": 26024097}, "id": 1}, "keys": {"jsonrpc": "2.0", "result": {"block_hash": "3CMeribA8TdF6154QcHM1PFP2C7VLz7vJHUvPYh85g4H", "block_height": 223569575, "keys": []}, "id": 1}}, "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1": {"ft_metadata": {"jsonrpc": "2.0", "result": {"block_hash": "3CMeribA8TdF6154QcHM1PFP2C7VLz7vJHUvPYh85g4H", "block_height": 223569575, "logs": [], "result": [123, 34, 115, 112, 101, 99, 34, 58, 34, 102, 116, 45, 49, 46, 48, 46, 48, 34, 44, 34, 110, 97, 109, 101, 34, 58, 34, 85, 83, 68, 67, 34, 44, 34, 115, 121, 109, 98, 111, 108, 34, 58, 34, 85, 83, 68, 67, 34, 44, 34, 105, 99, 111, 110, 34, 58, 34, 100, 97, 116, 97, 58, 105, 109, 97, 103, 101, 47, 115, 118, 103, 43, 120, 109, 108, 44, 37, 51, 67, 37, 51, 70, 120, 109, 108, 32, 118, 101, 114, 115, 105, 111, 110, 61, 37, 50, 50, 49, 46, 48, 37, 50, 50, 32, 101, 110, 99, 111, 100, 105, 110, 103, 61, 37, 50, 50, 117, 116, 102, 45, 56, 37, 50, 50, 37, 51, 70, 37, 51, 69, 37, 51, 67, 33, 45, 45, 32, 71, 101, 110, 101, 114, 97, 116, 111, 114, 58, 32, 65, 100, 111, 98, 101, 32, 73, 108, 108, 117, 115, 116, 114, 97, 116, 111, 114, 32, 50, 50, 46, 48, 46, 49, 44, 32, 83, 86, 71, 32, 69, 120, 112, 111, 114, 116, 32, 80, 108, 117, 103, 45, 73, 110, 32, 46, 32, 83, 86, 71, 32, 86, 101, 114, 115, 105, 111, 110, 58, 32, 54, 46, 48, 48, 32, 66, 117, 105, 108, 100, 32, 48, 41, 32, 45, 45, 37, 51, 69, 37, 51, 67, 115, 118, 103, 32, 118, 101, 114, 115, 105, 111, 110, 61, 37, 50, 50, 49, 46, 49, 37, 50, 50, 32, 105, 100, 61, 37, 50, 50, 76, 97, 121, 101, 114, 95, 49, 37, 50, 50, 32, 120, 109, 108, 110, 115, 61, 37, 50, 50, 104, 116, 116, 112, 58, 47, 47, 119, 119, 119, 46, 119, 51, 46, 111, 114, 103, 47, 50, 48, 48, 48, 47, 115, 118, 103, 37, 50, 50, 32, 120, 109, 108, 110, 115, 58, 120, 108, 105, 110, 107, 61, 37, 50, 50, 104, 116, 116, 112, 58, 47, 47, 119, 119, 119, 46, 119, 51, 46, 111, 114, 103, 47, 49, 57, 57, 57, 47, 120, 108, 105, 110, 107, 37, 50, 50, 32, 120, 61, 37, 50, 50, 48, 112, 120, 37, 50, 50, 32, 121, 61, 37, 50, 50, 48, 112, 120, 37, 50, 50, 32, 118, 105, 101, 119, 66, 111, 120, 61, 37, 50, 50, 48, 32, 48, 32, 50, 53, 54, 32, 50, 53, 54, 37, 50, 50, 32, 115, 116, 121, 108, 101, 61, 37, 50, 50, 101, 110, 97, 98, 108, 101, 45, 98, 97, 99, 107, 103, 114, 111, 117, 110, 100, 58, 110, 101, 119, 32, 48, 32, 48, 32, 50, 53, 54, 32, 50, 53, 54, 59, 37, 50, 50, 32, 120, 109, 108, 58, 115, 112, 97, 99, 101, 61, 37, 50, 50, 112, 114, 101, 115, 101, 114, 118, 101, 37, 50, 50, 37, 51, 69, 37, 51, 67, 115, 116, 121, 108, 101, 32, 116, 121, 112, 101, 61, 37, 50, 50, 116, 101, 120, 116, 47, 99, 115, 115, 37, 50, 50, 37, 51, 69, 32, 46, 115, 116, 48, 37, 55, 66, 102, 105, 108, 108, 58, 37, 50, 51, 50, 55, 55, 53, 67, 65, 59, 37, 55, 68, 32, 46, 115, 116, 49, 37, 55, 66, 102, 105, 108, 108, 58, 37, 50, 51, 70, 70, 70, 70, 70, 70, 59, 37, 55, 68, 37, 48, 65, 37, 51, 67, 47, 115, 116, 121, 108, 101, 37, 51, 69, 37, 51, 67, 99, 105, 114, 99, 108, 101, 32, 99, 108, 97, 115, 115, 61, 37, 50, 50, 115, 116, 48, 37, 50, 50, 32, 99, 120, 61, 37, 50, 50, 49, 50, 56, 37, 50, 50, 32, 99, 121, 61, 37, 50, 50, 49, 50, 56, 37, 50, 50, 32, 114, 61, 37, 50, 50, 49, 50, 56, 37, 50, 50, 47, 37, 51, 69, 37, 51, 67, 112, 97, 116, 104, 32, 99, 108, 97, 115, 115, 61, 37, 50, 50, 115, 116, 49, 37, 50, 50, 32, 100, 61, 37, 50, 50, 77, 49, 48, 52, 44, 50, 49, 55, 99, 48, 44, 51, 45, 50, 46, 52, 44, 52, 46, 55, 45, 53, 46, 50, 44, 51, 46, 56, 67, 54, 48, 44, 50, 48, 56, 46, 52, 44, 51, 50, 44, 49, 55, 50, 46, 50, 44, 51, 50, 44, 49, 50, 57, 46, 51, 99, 48, 45, 52, 50, 46, 56, 44, 50, 56, 45, 55, 57, 46, 49, 44, 54, 54, 46, 56, 45, 57, 49, 46, 53, 99, 50, 46, 57, 45, 48, 46, 57, 44, 53, 46, 50, 44, 48, 46, 56, 44, 53, 46, 50, 44, 51, 46, 56, 32, 118, 55, 46, 53, 99, 48, 44, 50, 45, 49, 46, 53, 44, 52, 46, 51, 45, 51, 46, 52, 44, 53, 67, 54, 57, 46, 57, 44, 54, 53, 46, 52, 44, 52, 56, 44, 57, 52, 46, 57, 44, 52, 56, 44, 49, 50, 57, 46, 51, 99, 48, 44, 51, 52, 46, 53, 44, 50, 49, 46, 57, 44, 54, 51, 46, 57, 44, 53, 50, 46, 54, 44, 55, 53, 46, 49, 99, 49, 46, 57, 44, 48, 46, 55, 44, 51, 46, 52, 44, 51, 44, 51, 46, 52, 44, 53, 86, 50, 49, 55, 122, 37, 50, 50, 47, 37, 51, 69, 37, 51, 67, 112, 97, 116, 104, 32, 99, 108, 97, 115, 115, 61, 37, 50, 50, 115, 116, 49, 37, 50, 50, 32, 100, 61, 37, 50, 50, 77, 49, 51, 54, 44, 49, 56, 57, 46, 51, 99, 48, 44, 50, 46, 50, 45, 49, 46, 56, 44, 52, 45, 52, 44, 52, 104, 45, 56, 99, 45, 50, 46, 50, 44, 48, 45, 52, 45, 49, 46, 56, 45, 52, 45, 52, 118, 45, 49, 50, 46, 54, 99, 45, 49, 55, 46, 53, 45, 50, 46, 52, 45, 50, 54, 45, 49, 50, 46, 49, 45, 50, 56, 46, 51, 45, 50, 53, 46, 53, 99, 45, 48, 46, 52, 45, 50, 46, 51, 44, 49, 46, 52, 45, 52, 46, 51, 44, 51, 46, 55, 45, 52, 46, 51, 32, 104, 57, 46, 49, 99, 49, 46, 57, 44, 48, 44, 51, 46, 53, 44, 49, 46, 52, 44, 51, 46, 57, 44, 51, 46, 50, 99, 49, 46, 55, 44, 55, 46, 57, 44, 54, 46, 51, 44, 49, 52, 44, 50, 48, 46, 51, 44, 49, 52, 99, 49, 48, 46, 51, 44, 48, 44, 49, 55, 46, 55, 45, 53, 46, 56, 44, 49, 55, 46, 55, 45, 49, 52, 46, 52, 99, 48, 45, 56, 46, 54, 45, 52, 46, 51, 45, 49, 49, 46, 57, 45, 49, 57, 46, 53, 45, 49, 52, 46, 52, 99, 45, 50, 50, 46, 52, 45, 51, 45, 51, 51, 45, 57, 46, 56, 45, 51, 51, 45, 50, 55, 46, 51, 32, 99, 48, 45, 49, 51, 46, 53, 44, 49, 48, 46, 51, 45, 50, 52, 46, 49, 44, 50, 54, 46, 49, 45, 50, 54, 46, 51, 86, 54, 57, 46, 51, 99, 48, 45, 50, 46, 50, 44, 49, 46, 56, 45, 52, 44, 52, 45, 52, 104, 56, 99, 50, 46, 50, 44, 48, 44, 52, 44, 49, 46, 56, 44, 52, 44, 52, 118, 49, 50, 46, 55, 99, 49, 50, 46, 57, 44, 50, 46, 51, 44, 50, 49, 46, 49, 44, 57, 46, 54, 44, 50, 51, 46, 56, 44, 50, 49, 46, 56, 99, 48, 46, 53, 44, 50, 46, 51, 45, 49, 46, 51, 44, 52, 46, 52, 45, 51, 46, 55, 44, 52, 46, 52, 32, 104, 45, 56, 46, 52, 99, 45, 49, 46, 56, 44, 48, 45, 51, 46, 51, 45, 49, 46, 50, 45, 51, 46, 56, 45, 50, 46, 57, 99, 45, 50, 46, 51, 45, 55, 46, 55, 45, 55, 46, 56, 45, 49, 49, 46, 49, 45, 49, 55, 46, 52, 45, 49, 49, 46, 49, 99, 45, 49, 48, 46, 54, 44, 48, 45, 49, 54, 46, 49, 44, 53, 46, 49, 45, 49, 54, 46, 49, 44, 49, 50, 46, 51, 99, 48, 44, 55, 46, 54, 44, 51, 46, 49, 44, 49, 49, 46, 52, 44, 49, 57, 46, 52, 44, 49, 51, 46, 55, 32, 99, 50, 50, 44, 51, 44, 51, 51, 46, 52, 44, 57, 46, 51, 44, 51, 51, 46, 52, 44, 50, 56, 99, 48, 44, 49, 52, 46, 50, 45, 49, 48, 46, 54, 44, 50, 53, 46, 55, 45, 50, 55, 46, 49, 44, 50, 56, 46, 51, 86, 49, 56, 57, 46, 51, 122, 37, 50, 50, 47, 37, 51, 69, 37, 51, 67, 112, 97, 116, 104, 32, 99, 108, 97, 115, 115, 61, 37, 50, 50, 115, 116, 49, 37, 50, 50, 32, 100, 61, 37, 50, 50, 77, 49, 53, 55, 46, 50, 44, 50, 50, 48, 46, 56, 99, 45, 50, 46, 57, 44, 48, 46, 57, 45, 53, 46, 50, 45, 48, 46, 56, 45, 53, 46, 50, 45, 51, 46, 56, 118, 45, 55, 46, 53, 99, 48, 45, 50, 46, 50, 44, 49, 46, 51, 45, 52, 46, 51, 44, 51, 46, 52, 45, 53, 99, 51, 48, 46, 54, 45, 49, 49, 46, 50, 44, 53, 50, 46, 54, 45, 52, 48, 46, 55, 44, 53, 50, 46, 54, 45, 55, 53, 46, 49, 32, 99, 48, 45, 51, 52, 46, 53, 45, 50, 49, 46, 57, 45, 54, 51, 46, 57, 45, 53, 50, 46, 54, 45, 55, 53, 46, 49, 99, 45, 49, 46, 57, 45, 48, 46, 55, 45, 51, 46, 52, 45, 51, 45, 51, 46, 52, 45, 53, 118, 45, 55, 46, 53, 99, 48, 45, 51, 44, 50, 46, 52, 45, 52, 46, 55, 44, 53, 46, 50, 45, 51, 46, 56, 67, 49, 57, 54, 44, 53, 48, 46, 50, 44, 50, 50, 52, 44, 56, 54, 46, 53, 44, 50, 50, 52, 44, 49, 50, 57, 46, 51, 32, 67, 50, 50, 52, 44, 49, 55, 50, 46, 50, 44, 49, 57, 54, 44, 50, 48, 56, 46, 52, 44, 49, 53, 55, 46, 50, 44, 50, 50, 48, 46, 56, 122, 37, 50, 50, 47, 37, 51, 69, 37, 51, 67, 47, 115, 118, 103, 37, 51, 69, 37, 48, 65, 34, 44, 34, 114, 101, 102, 101, 114, 101, 110, 99, 101, 34, 58, 110, 117, 108, 108, 44, 34, 114, 101, 102, 101, 114, 101, 110, 99, 101, 95, 104, 97, 115, 104, 34, 58, 110, 117, 108, 108, 44, 34, 100, 101, 99, 105, 109, 97, 108, 115, 34, 58, 54, 125]}, "id": 1}, "ft_total_supply": {"jsonrpc": "2.0", "result": {"block_hash": "3CMeribA8TdF6154QcHM1PFP2C7VLz7vJHUvPYh85g4H", "block_height": 223569575, "logs": [], "result": [34, 55, 56, 48, 54, 51, 56, 49, 56, 51, 56, 48, 52, 54, 57, 34]}, "id": 1}, "account": {"jsonrpc": "2.0", "result": {"amount": "7298349842270990461886299785", "block_hash": "3CMeribA8TdF6154QcHM1PFP2C7VLz7vJHUvPYh85g4H", "block_height": 223569575, "code_hash": "DVJx7F3dHEHJYwpYPwXHu8K9Uo7h4kXFcALucY5oNX8q", "locked": "0", "storage_paid_at": 0, "storage_usage": 66299198}, "id": 1}, "keys": {"jsonrpc": "2.0", "result": {"block_hash": "3CMeribA8TdF6154QcHM1PFP2C7VLz7vJHUvPYh85g4H", "block_height": 223569575, "keys": [{"access_key": {"nonce": 79039276000031, "permission": "FullAccess"}, "public_key": "ed25519:2ZH9CzFkmTVSKM9rQ14b8D4myiuFZv17jvdfZmYjTcak"}]}, "id": 1}}, "usdt.tether-token.near": {"ft_metadata": {"jsonrpc": "2.0", "result": {"block_hash": "3CMeribA8TdF6154QcHM1PFP2C7VLz7vJHUvPYh85g4H", "block_height": 223569575, "logs": [], "result": [123, 34, 115, 112, 101, 99, 34, 58, 34, 102, 116, 45, 49, 46, 48, 46, 48, 34, 44, 34, 110, 97, 109, 101, 34, 58, 34, 84, 101, 116, 104, 101, 114, 32, 85, 83, 68, 34, 44, 34, 115, 121, 109, 98, 111, 108, 34, 58, 34, 85, 83, 68, 116, 34, 44, 34, 105, 99, 111, 110, 34, 58, 34, 100, 97, 116, 97, 58, 105, 109, 97, 103, 101, 47, 115, 118, 103, 43, 120, 109, 108, 44, 37, 51, 67, 115, 118, 103, 32, 119, 105, 100, 116, 104, 61, 39, 49, 49, 49, 39, 32, 104, 101, 105, 103, 104, 116, 61, 39, 57, 48, 39, 32, 118, 105, 101, 119, 66, 111, 120, 61, 39, 48, 32, 48, 32, 49, 49, 49, 32, 57, 48, 39, 32, 102, 105, 108, 108, 61, 39, 110, 111, 110, 101, 39, 32, 120, 109, 108, 110, 115, 61, 39, 104, 116, 116, 112, 58, 47, 47, 119, 119, 119, 46, 119, 51, 46, 111, 114, 103, 47, 50, 48, 48, 48, 47, 115, 118, 103, 39, 37, 51, 69, 37, 51, 67, 112, 97, 116, 104, 32, 102, 105, 108, 108, 45, 114, 117, 108, 101, 61, 39, 101, 118, 101, 110, 111, 100, 100, 39, 32, 99, 108, 105, 112, 45, 114, 117, 108, 101, 61, 39, 101, 118, 101, 110, 111, 100, 100, 39, 32, 100, 61, 39, 77, 50, 52, 46, 52, 56, 50, 53, 32, 48, 46, 56, 54, 50, 51, 48, 53, 72, 56, 56, 46, 48, 52, 57, 54, 67, 56, 57, 46, 53, 54, 54, 51, 32, 48, 46, 56, 54, 50, 51, 48, 53, 32, 57, 48, 46, 57, 54, 55, 53, 32, 49, 46, 54, 52, 56, 50, 55, 32, 57, 49, 46, 55, 50, 51, 57, 32, 50, 46, 57, 50, 51, 51, 56, 76, 49, 49, 48, 46, 50, 52, 52, 32, 51, 52, 46, 49, 52, 49, 57, 67, 49, 49, 49, 46, 50, 48, 52, 32, 51, 53, 46, 55, 54, 48, 57, 32, 49, 49, 48, 46, 57, 49, 57, 32, 51, 55, 46, 56, 48, 52, 51, 32, 49, 48, 57, 46, 53, 52, 57, 32, 51, 57, 46, 49, 49, 55, 49, 76, 53, 56, 46, 53, 55, 50, 57, 32, 56, 55, 46, 57, 55, 48, 51, 67, 53, 54, 46, 57, 50, 49, 54, 32, 56, 57, 46, 53, 53, 50, 56, 32, 53, 52, 46, 50, 54, 53, 50, 32, 56, 57, 46, 53, 53, 50, 56, 32, 53, 50, 46, 54, 49, 51, 57, 32, 56, 55, 46, 57, 55, 48, 51, 76, 49, 46, 55, 48, 54, 57, 57, 32, 51, 57, 46, 49, 56, 51, 49, 67, 48, 46, 51, 48, 53, 50, 54, 50, 32, 51, 55, 46, 56, 51, 57, 56, 32, 48, 46, 48, 52, 50, 55, 56, 49, 50, 32, 51, 53, 46, 55, 51, 54, 55, 32, 49, 46, 48, 55, 51, 53, 52, 32, 51, 52, 46, 49, 48, 55, 55, 76, 50, 48, 46, 56, 54, 57, 54, 32, 50, 46, 56, 50, 51, 50, 50, 67, 50, 49, 46, 54, 52, 48, 54, 32, 49, 46, 54, 48, 52, 56, 51, 32, 50, 51, 46, 48, 48, 56, 55, 32, 48, 46, 56, 54, 50, 51, 48, 53, 32, 50, 52, 46, 52, 56, 50, 53, 32, 48, 46, 56, 54, 50, 51, 48, 53, 90, 77, 55, 57, 46, 56, 52, 49, 57, 32, 49, 52, 46, 56, 48, 48, 51, 86, 50, 51, 46, 53, 53, 57, 55, 72, 54, 49, 46, 55, 51, 52, 51, 86, 50, 57, 46, 54, 51, 50, 57, 67, 55, 52, 46, 52, 53, 49, 56, 32, 51, 48, 46, 50, 56, 49, 57, 32, 56, 51, 46, 57, 57, 51, 52, 32, 51, 50, 46, 57, 52, 55, 53, 32, 56, 52, 46, 48, 54, 52, 50, 32, 51, 54, 46, 49, 52, 50, 53, 76, 56, 52, 46, 48, 54, 51, 56, 32, 52, 50, 46, 56, 48, 51, 67, 56, 51, 46, 57, 57, 51, 32, 52, 53, 46, 57, 57, 56, 32, 55, 52, 46, 52, 53, 49, 56, 32, 52, 56, 46, 54, 54, 51, 53, 32, 54, 49, 46, 55, 51, 52, 51, 32, 52, 57, 46, 51, 49, 50, 53, 86, 54, 52, 46, 50, 49, 54, 56, 72, 52, 57, 46, 55, 49, 48, 53, 86, 52, 57, 46, 51, 49, 50, 53, 67, 51, 54, 46, 57, 57, 50, 57, 32, 52, 56, 46, 54, 54, 51, 53, 32, 50, 55, 46, 52, 53, 49, 51, 32, 52, 53, 46, 57, 57, 56, 32, 50, 55, 46, 51, 56, 48, 53, 32, 52, 50, 46, 56, 48, 51, 76, 50, 55, 46, 51, 56, 49, 32, 51, 54, 46, 49, 52, 50, 53, 67, 50, 55, 46, 52, 53, 49, 55, 32, 51, 50, 46, 57, 52, 55, 53, 32, 51, 54, 46, 57, 57, 50, 57, 32, 51, 48, 46, 50, 56, 49, 57, 32, 52, 57, 46, 55, 49, 48, 53, 32, 50, 57, 46, 54, 51, 50, 57, 86, 50, 51, 46, 53, 53, 57, 55, 72, 51, 49, 46, 54, 48, 50, 56, 86, 49, 52, 46, 56, 48, 48, 51, 72, 55, 57, 46, 56, 52, 49, 57, 90, 77, 53, 53, 46, 55, 50, 50, 52, 32, 52, 52, 46, 55, 51, 54, 55, 67, 54, 57, 46, 50, 57, 52, 51, 32, 52, 52, 46, 55, 51, 54, 55, 32, 56, 48, 46, 54, 51, 56, 50, 32, 52, 50, 46, 52, 56, 50, 55, 32, 56, 51, 46, 52, 49, 52, 51, 32, 51, 57, 46, 52, 55, 50, 55, 67, 56, 49, 46, 48, 54, 48, 49, 32, 51, 54, 46, 57, 50, 48, 50, 32, 55, 50, 46, 53, 52, 52, 56, 32, 51, 52, 46, 57, 49, 49, 52, 32, 54, 49, 46, 55, 51, 52, 51, 32, 51, 52, 46, 51, 53, 57, 55, 86, 52, 48, 46, 55, 49, 56, 51, 67, 53, 57, 46, 55, 57, 54, 54, 32, 52, 48, 46, 56, 49, 55, 50, 32, 53, 55, 46, 55, 56, 53, 50, 32, 52, 48, 46, 56, 54, 57, 51, 32, 53, 53, 46, 55, 50, 50, 52, 32, 52, 48, 46, 56, 54, 57, 51, 67, 53, 51, 46, 54, 53, 57, 53, 32, 52, 48, 46, 56, 54, 57, 51, 32, 53, 49, 46, 54, 52, 56, 49, 32, 52, 48, 46, 56, 49, 55, 50, 32, 52, 57, 46, 55, 49, 48, 53, 32, 52, 48, 46, 55, 49, 56, 51, 86, 51, 52, 46, 51, 53, 57, 55, 67, 51, 56, 46, 56, 57, 57, 57, 32, 51, 52, 46, 57, 49, 49, 52, 32, 51, 48, 46, 51, 56, 52, 54, 32, 51, 54, 46, 57, 50, 48, 50, 32, 50, 56, 46, 48, 51, 48, 52, 32, 51, 57, 46, 52, 55, 50, 55, 67, 51, 48, 46, 56, 48, 54, 54, 32, 52, 50, 46, 52, 56, 50, 55, 32, 52, 50, 46, 49, 53, 48, 52, 32, 52, 52, 46, 55, 51, 54, 55, 32, 53, 53, 46, 55, 50, 50, 52, 32, 52, 52, 46, 55, 51, 54, 55, 90, 39, 32, 102, 105, 108, 108, 61, 39, 37, 50, 51, 48, 48, 57, 51, 57, 51, 39, 47, 37, 51, 69, 37, 51, 67, 47, 115, 118, 103, 37, 51, 69, 34, 44, 34, 114, 101, 102, 101, 114, 101, 110, 99, 101, 34, 58, 110, 117, 108, 108, 44, 34, 114, 101, 102, 101, 114, 101, 110, 99, 101, 95, 104, 97, 115, 104, 34, 58, 110, 117, 108, 108, 44, 34, 100, 101, 99, 105, 109, 97, 108, 115, 34, 58, 54, 125]}, "id": 1}, "ft_total_supply": {"jsonrpc": "2.0", "result": {"block_hash": "3CMeribA8TdF6154QcHM1PFP2C7VLz7vJHUvPYh85g4H", "block_height": 223569575, "logs": [], "result": [34, 53, 50, 53, 57, 52, 52, 49, 50, 48, 55, 57, 51, 55, 48, 57, 34]}, "id": 1}, "account": {"jsonrpc": "2.0", "result": {"amount": "4588607818397315166733745563", "block_hash": "3CMeribA8TdF6154QcHM1PFP2C7VLz7vJHUvPYh85g4H", "block_height": 223569575, "code_hash": "51tHbmQkA8qAi8c6MoUor5mCx6CnL6tZyC2sqQifKPZC", "locked": "0", "storage_paid_at": 0, "storage_usage": 248419737}, "id": 1}, "keys": {"jsonrpc": "2.0", "result": {"block_hash": "3CMeribA8TdF6154QcHM1PFP2C7VLz7vJHUvPYh85g4H", "block_height": 223569575, "keys": []}, "id": 1}}}};
+if (typeof module !== "undefined") module.exports = NCC_SNAPSHOT;
+
+</script>
+<script>
+/* NEAR Claim Check — evidence inspector core logic. No network calls unless liveFetch is invoked. */
+(function (root) {
+  "use strict";
+
+  var DEFAULT_RPC = "https://rpc.mainnet.near.org";
+
+  var TOKENS = [
+    {
+      id: "token.v2.ref-finance.near", short: "REF", name: "Ref Finance Token",
+      issuerKind: "Fixed-supply governance token (as stated by its docs)",
+      sources: [{
+        title: "Ref Finance guide — Tokenomics", url: "https://guide.ref.finance/tokenomics",
+        mirror: "https://guide.rhea.finance/tokenomics",
+        quote: "Fungible Token Contract: token.v2.ref-finance.near … Fixed Supply: 100,000,000",
+        provenance: "UNVERIFIED EXCERPT: text came from a search-index copy of the page. A direct fetch from the build machine timed out, so the live page was not re-read.",
+        verified: false
+      }],
+      supplyClaim: { kind: "fixed", wholeTokens: "100000000", text: "Fixed Supply: 100,000,000" }
+    },
+    {
+      id: "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1", short: "USDC", name: "USDC (Circle, native on NEAR)",
+      issuerKind: "Issuer-managed stablecoin: supply changes as coins are minted and redeemed",
+      sources: [{
+        title: "Circle developer docs — USDC contract addresses", url: "https://developers.circle.com/stablecoins/usdc-contract-addresses",
+        quote: "NEAR | 17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+        provenance: "Excerpt of the official address table as returned by search on 2026-11-08; establishes the contract address only.",
+        verified: false
+      }],
+      supplyClaim: null
+    },
+    {
+      id: "usdt.tether-token.near", short: "USDt", name: "Tether USD on NEAR",
+      issuerKind: "Issuer-managed stablecoin: supply changes as coins are issued and redeemed",
+      sources: [{
+        title: "Tether — Supported protocols", url: "https://tether.to/en/supported-protocols/",
+        quote: "usdt.tether-token.near",
+        provenance: "Address string found by a direct fetch of the official page on 2026-11-08; establishes the contract address only.",
+        verified: true
+      }],
+      supplyClaim: null
+    }
+  ];
+
+  function NccError(kind, message, detail) {
+    var e = new Error(message); e.name = "NccError"; e.kind = kind; e.detail = detail; return e;
+  }
+
+  function tokenById(id) {
+    for (var i = 0; i < TOKENS.length; i++) if (TOKENS[i].id === id) return TOKENS[i];
+    throw NccError("unknown_token", "Unknown token: " + id);
+  }
+
+  function groupThousands(s) { return s.replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
+
+  /* Exact BigInt formatting, no floating point. */
+  function formatUnits(raw, decimals) {
+    if (typeof raw !== "string" || !/^-?\d+$/.test(raw)) throw NccError("malformed", "Supply is not an integer string");
+    if (!Number.isInteger(decimals) || decimals < 0 || decimals > 255) throw NccError("malformed", "Bad decimals");
+    var neg = raw[0] === "-"; var v = BigInt(neg ? raw.slice(1) : raw);
+    var base = 10n ** BigInt(decimals);
+    var whole = (v / base).toString(), frac = (v % base).toString().padStart(decimals, "0").replace(/0+$/, "");
+    return (neg ? "-" : "") + groupThousands(whole) + (frac ? "." + frac : "");
+  }
+
+  function decodeCallResult(resp) {
+    if (!resp || typeof resp !== "object") throw NccError("malformed", "Empty RPC response");
+    if (resp.error) throw NccError("rpc", "RPC error: " + (resp.error.cause && resp.error.cause.name || resp.error.message || "unknown"), resp.error);
+    var r = resp.result;
+    if (!r || !Array.isArray(r.result)) throw NccError("malformed", "Call result missing bytes", r);
+    var text = new TextDecoder().decode(new Uint8Array(r.result));
+    try { return JSON.parse(text); } catch (e) { throw NccError("malformed", "Call result is not JSON"); }
+  }
+
+  function interpretKeys(resp) {
+    if (resp && resp.error) throw NccError("rpc", "RPC error reading access keys", resp.error);
+    if (!resp || !resp.result || !Array.isArray(resp.result.keys)) throw NccError("malformed", "Access key list missing");
+    var full = 0, fc = [];
+    resp.result.keys.forEach(function (k) {
+      var p = k.access_key && k.access_key.permission;
+      if (p === "FullAccess") full++;
+      else if (p && p.FunctionCall) fc.push({ receiver: p.FunctionCall.receiver_id, methods: p.FunctionCall.method_names || [] });
+    });
+    var status, summary;
+    if (full > 0) {
+      status = "upgradeable_by_key";
+      summary = "At this block, " + full + " full-access key(s) exist. Whoever holds such a key can redeploy the contract code or move the account's NEAR. This is normal for issuer-controlled tokens and is not evidence of wrongdoing.";
+    } else {
+      status = "no_full_access_keys";
+      summary = "No full-access keys at this block. This does NOT prove the contract is immutable: the deployed code itself may expose an upgrade or admin method. Reading the contract source is required to know.";
+    }
+    return { status: status, fullAccessCount: full, functionCallKeys: fc, totalKeys: resp.result.keys.length, summary: summary };
+  }
+
+  /* Compare an on-chain total with a stated fixed/max figure. Never returns a fraud verdict. */
+  function compareFixedClaim(rawSupply, decimals, claimWhole) {
+    var claimRaw = BigInt(claimWhole) * 10n ** BigInt(decimals);
+    var chain = BigInt(rawSupply), diff = chain - claimRaw;
+    if (diff === 0n) return { status: "matches", note: "On-chain total equals the stated figure." };
+    var abs = diff < 0n ? -diff : diff;
+    var ppm = (abs * 100000000n) / claimRaw; // percent with 6 decimals
+    var pct = (ppm / 1000000n).toString() + "." + (ppm % 1000000n).toString().padStart(6, "0");
+    return {
+      status: "differs", direction: diff < 0n ? "below" : "above",
+      differenceRaw: abs.toString(), difference: formatUnits(abs.toString(), decimals), percent: pct,
+      note: diff < 0n
+        ? "On-chain total is BELOW the stated fixed figure. Possible reasons include burns or an outdated document; the cause was not verified. A stated fixed/max supply is not automatically contradicted by a different current total."
+        : "On-chain total is ABOVE the stated fixed figure. This is worth investigating (e.g. later minting or a different contract), but the cause was not verified here."
+    };
+  }
+
+  function analyze(tokenId, raw) {
+    var t = tokenById(tokenId);
+    var meta = decodeCallResult(raw.ft_metadata);
+    var supply = decodeCallResult(raw.ft_total_supply);
+    if (typeof supply !== "string") throw NccError("malformed", "ft_total_supply did not return a string");
+    if (raw.account && raw.account.error) throw NccError("rpc", "RPC error reading account", raw.account.error);
+    var acct = raw.account && raw.account.result;
+    if (!acct || !acct.code_hash) throw NccError("malformed", "Account code_hash missing");
+    var out = {
+      token: t, symbol: meta.symbol, metaName: meta.name, decimals: meta.decimals, spec: meta.spec,
+      supplyRaw: supply, supply: formatUnits(supply, meta.decimals),
+      keys: interpretKeys(raw.keys),
+      codeHash: acct.code_hash,
+      codeHashNote: "Identifies exactly which compiled code is deployed. It is NOT code verification: matching it to audited source needs a reproducible build.",
+      claim: null
+    };
+    if (t.supplyClaim && t.supplyClaim.kind === "fixed") {
+      out.claim = Object.assign({ stated: t.supplyClaim.text }, compareFixedClaim(supply, meta.decimals, t.supplyClaim.wholeTokens));
+    } else {
+      out.claim = { status: "no_fixed_claim", note: "No fixed supply is claimed by the cited source; supply is expected to change. Only the current on-chain value is shown." };
+    }
+    return out;
+  }
+
+  function abortError(signal) {
+    var r = signal && signal.reason;
+    return r && r.name === "NccError" ? r : NccError("cancelled", "Live read was cancelled.");
+  }
+
+  async function rpc(fetchImpl, url, method, params, timeoutMs, outerSignal) {
+    if (outerSignal && outerSignal.aborted) throw abortError(outerSignal);
+    var ctrl = new AbortController(), timedOut = false;
+    var timer = setTimeout(function () { timedOut = true; ctrl.abort(); }, timeoutMs || 20000);
+    var onOuter = function () { ctrl.abort(); };
+    if (outerSignal) outerSignal.addEventListener("abort", onOuter);
+    var res;
+    try {
+      res = await fetchImpl(url, { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: "ncc", method: method, params: params }), signal: ctrl.signal });
+    } catch (e) {
+      if (outerSignal && outerSignal.aborted) throw abortError(outerSignal);
+      if (timedOut || (e && e.name === "AbortError")) throw NccError("timeout", "A request to the public RPC timed out after " + Math.round((timeoutMs || 20000) / 1000) + " s.");
+      throw NccError("network", "Network error: offline, blocked by this viewer, or refused by the RPC (CORS). Browser said: " + (e && e.message));
+    } finally { clearTimeout(timer); if (outerSignal) outerSignal.removeEventListener("abort", onOuter); }
+    if (res.status === 429) throw NccError("rate_limited", "Public RPC rate limit hit (HTTP 429). Wait a minute and retry.");
+    if (!res.ok) throw NccError("http", "RPC returned HTTP " + res.status);
+    var body;
+    try { body = await res.json(); } catch (e) { throw NccError("malformed", "RPC response was not JSON"); }
+    if (body.error) throw NccError("rpc", "RPC error: " + (body.error.cause && body.error.cause.name || body.error.message), body.error);
+    return body;
+  }
+
+  /* Live read: one final block, then all four queries pinned to that block height.
+     opts: { url, perRequestMs (default 20000), totalMs (default 75000), signal, onProgress(step, total, label) } */
+  async function liveFetch(fetchImpl, tokenId, opts) {
+    tokenById(tokenId);
+    if (typeof opts === "string" || opts === null || opts === undefined) opts = { url: opts || undefined, perRequestMs: arguments[3] };
+    var url = opts.url || DEFAULT_RPC, per = opts.perRequestMs || 20000, totalMs = opts.totalMs || 75000;
+    var ctrl = new AbortController();
+    var total = setTimeout(function () { ctrl.abort(NccError("timeout", "Live read took longer than " + Math.round(totalMs / 1000) + " s overall and was stopped.")); }, totalMs);
+    var onOuter = function () { ctrl.abort(NccError("cancelled", "Live read was cancelled.")); };
+    if (opts.signal) { if (opts.signal.aborted) onOuter(); else opts.signal.addEventListener("abort", onOuter); }
+    var prog = opts.onProgress || function () {};
+    var steps = ["latest final block", "ft_metadata", "ft_total_supply", "view_account", "view_access_key_list"];
+    try {
+      prog(1, 5, steps[0]);
+      var b = await rpc(fetchImpl, url, "block", { finality: "final" }, per, ctrl.signal);
+      var h = b.result && b.result.header;
+      if (!h || typeof h.height !== "number") throw NccError("malformed", "Block header missing");
+      var q = function (p) { return rpc(fetchImpl, url, "query", Object.assign({ block_id: h.height, account_id: tokenId }, p), per, ctrl.signal); };
+      var call = function (m) { return q({ request_type: "call_function", method_name: m, args_base64: "e30=" }); };
+      prog(2, 5, steps[1]); var meta = await call("ft_metadata");
+      prog(3, 5, steps[2]); var sup = await call("ft_total_supply");
+      prog(4, 5, steps[3]); var acct = await q({ request_type: "view_account" });
+      prog(5, 5, steps[4]); var keys = await q({ request_type: "view_access_key_list" });
+      return { rpc: url, block: { height: h.height, hash: h.hash, timestamp_nanosec: h.timestamp_nanosec }, raw: { ft_metadata: meta, ft_total_supply: sup, account: acct, keys: keys } };
+    } finally { clearTimeout(total); if (opts.signal) opts.signal.removeEventListener("abort", onOuter); }
+  }
+
+  function blockTimeIso(ns) { return new Date(Number(BigInt(ns) / 1000000n)).toISOString(); }
+
+  function canonicalize(v) {
+    if (v === null || typeof v !== "object") return JSON.stringify(v);
+    if (Array.isArray(v)) return "[" + v.map(canonicalize).join(",") + "]";
+    return "{" + Object.keys(v).sort().map(function (k) { return JSON.stringify(k) + ":" + canonicalize(v[k]); }).join(",") + "}";
+  }
+
+  /* Pure-JS SHA-256 (FIPS 180-4) for contexts without crypto.subtle (e.g. content:// or file:// on some mobiles). */
+  function sha256Fallback(str) {
+    var bytes = new TextEncoder().encode(str), K = [], H = [], i, j;
+    var primes = [], n = 2;
+    while (primes.length < 64) { var ip = true; for (j = 2; j * j <= n; j++) if (n % j === 0) { ip = false; break; } if (ip) primes.push(n); n++; }
+    var frac = function (x) { return ((x - Math.floor(x)) * 4294967296) >>> 0; };
+    for (i = 0; i < 64; i++) K[i] = frac(Math.cbrt(primes[i]));
+    for (i = 0; i < 8; i++) H[i] = frac(Math.sqrt(primes[i]));
+    var l = bytes.length, total = Math.ceil((l + 9) / 64) * 64, m = new Uint8Array(total);
+    m.set(bytes); m[l] = 0x80;
+    var bitsHi = Math.floor(l / 536870912), bitsLo = (l * 8) >>> 0, dv = new DataView(m.buffer);
+    dv.setUint32(total - 8, bitsHi); dv.setUint32(total - 4, bitsLo);
+    var w = new Array(64), rotr = function (x, k) { return (x >>> k) | (x << (32 - k)); };
+    for (var off = 0; off < total; off += 64) {
+      for (i = 0; i < 16; i++) w[i] = dv.getUint32(off + i * 4);
+      for (i = 16; i < 64; i++) {
+        var s0 = rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^ (w[i - 15] >>> 3), s1 = rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^ (w[i - 2] >>> 10);
+        w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;
+      }
+      var a = H[0], b = H[1], c = H[2], d = H[3], e = H[4], f = H[5], g = H[6], h = H[7];
+      for (i = 0; i < 64; i++) {
+        var t1 = (h + (rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25)) + ((e & f) ^ (~e & g)) + K[i] + w[i]) >>> 0;
+        var t2 = ((rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22)) + ((a & b) ^ (a & c) ^ (b & c))) >>> 0;
+        h = g; g = f; f = e; e = (d + t1) >>> 0; d = c; c = b; b = a; a = (t1 + t2) >>> 0;
+      }
+      H[0] = (H[0] + a) >>> 0; H[1] = (H[1] + b) >>> 0; H[2] = (H[2] + c) >>> 0; H[3] = (H[3] + d) >>> 0;
+      H[4] = (H[4] + e) >>> 0; H[5] = (H[5] + f) >>> 0; H[6] = (H[6] + g) >>> 0; H[7] = (H[7] + h) >>> 0;
+    }
+    return H.map(function (x) { return x.toString(16).padStart(8, "0"); }).join("");
+  }
+
+  var lastHashEngine = null;
+  async function sha256Hex(str) {
+    var c = (typeof globalThis !== "undefined" && globalThis.crypto && globalThis.crypto.subtle);
+    if (c) {
+      try {
+        var buf = await c.digest("SHA-256", new TextEncoder().encode(str));
+        lastHashEngine = "WebCrypto";
+        return Array.from(new Uint8Array(buf)).map(function (b) { return b.toString(16).padStart(2, "0"); }).join("");
+      } catch (e) { /* fall through to JS implementation */ }
+    }
+    lastHashEngine = "built-in JS SHA-256";
+    return sha256Fallback(str);
+  }
+
+  async function buildBundle(tokenId, mode, source) {
+    var a = analyze(tokenId, source.raw), t = a.token;
+    var payload = {
+      schema: "near-claim-check/evidence-bundle@1",
+      tool: "NEAR Claim Check — Evidence Inspector (rules-based, no AI)",
+      mode: mode, network: "mainnet", rpc: source.rpc,
+      block: { height: source.block.height, hash: source.block.hash, timestamp_nanosec: String(source.block.timestamp_nanosec), timeUtc: blockTimeIso(source.block.timestamp_nanosec) },
+      token: { id: t.id, symbol: a.symbol, decimals: a.decimals },
+      sources: t.sources,
+      findings: { supplyRaw: a.supplyRaw, supply: a.supply, claim: a.claim, keys: a.keys, codeHash: a.codeHash, codeHashNote: a.codeHashNote },
+      raw: source.raw,
+      disclaimer: "Evidence only. Not a verdict, not financial advice. A hash proves this file was not altered after export; it does not prove any claim is true."
+    };
+    return { payload: payload, integrity: { algorithm: "SHA-256", canonicalization: "sorted-keys JSON, no whitespace", sha256: await sha256Hex(canonicalize(payload)) } };
+  }
+
+  async function verifyBundle(bundle) {
+    if (!bundle || !bundle.payload || !bundle.integrity) return { ok: false, reason: "Not an evidence bundle" };
+    var h = await sha256Hex(canonicalize(bundle.payload));
+    return h === bundle.integrity.sha256 ? { ok: true, sha256: h } : { ok: false, reason: "Hash mismatch: file was modified", expected: bundle.integrity.sha256, actual: h };
+  }
+
+  function snapshotSource(snap, tokenId) {
+    var r = snap && snap.tokens && snap.tokens[tokenId];
+    if (!r) throw NccError("no_snapshot", "No cached snapshot for " + tokenId);
+    return { rpc: snap.rpc, block: snap.block, raw: r };
+  }
+
+  var api = { DEFAULT_RPC: DEFAULT_RPC, TOKENS: TOKENS, tokenById: tokenById, formatUnits: formatUnits, decodeCallResult: decodeCallResult,
+    interpretKeys: interpretKeys, compareFixedClaim: compareFixedClaim, analyze: analyze, rpc: rpc, liveFetch: liveFetch,
+    blockTimeIso: blockTimeIso, canonicalize: canonicalize, sha256Hex: sha256Hex, buildBundle: buildBundle, verifyBundle: verifyBundle,
+    snapshotSource: snapshotSource, NccError: NccError, sha256Fallback: sha256Fallback, hashEngine: function () { return lastHashEngine; } };
+  if (typeof module !== "undefined" && module.exports) module.exports = api; else root.NCC = api;
+})(this);
+
+</script>
+<script>
+(function () {
+  "use strict";
+  var L = window.NCC, S = window.NCC_SNAPSHOT;
+  var boot = document.getElementById("boot");
+  if (!L || !S) { if (boot) boot.textContent = "The inspector's data or rules did not load (" + (!L ? "rules " : "") + (!S ? "snapshot" : "") + "). Use the single-file NEAR-Claim-Check-Final.html."; return; }
+  window.addEventListener("error", function (ev) { var d = document.getElementById("detail"); if (d) d.innerHTML = '<div class="panel err"><h2>Something went wrong</h2><p>' + String(ev.message).replace(/[<>&]/g, "") + "</p></div>"; });
+  var $ = function (s) { return document.querySelector(s); };
+  var state = { selected: null, busy: false };
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function mode() { return document.querySelector('input[name=mode]:checked').value; }
+  function pkt(iso) { return new Date(iso).toLocaleString("en-GB", { timeZone: "Asia/Karachi", dateStyle: "medium", timeStyle: "medium" }) + " PKT"; }
+
+  function renderModeNote() {
+    Array.prototype.forEach.call(document.querySelectorAll(".mode label"), function (l) { l.classList.toggle("on", l.querySelector("input").checked); });
+    $("#modeNote").textContent = mode() === "snapshot"
+      ? "Snapshot captured " + pkt(L.blockTimeIso(S.block.timestamp_nanosec)) + " (" + L.blockTimeIso(S.block.timestamp_nanosec) + ")" + " at block " + S.block.height + ". It is not updated."
+      : "Live: reads the latest final block from rpc.mainnet.near.org and pins all four queries to it. If it fails you will see an error, never old data.";
+  }
+
+  function renderCards() {
+    $("#cards").innerHTML = L.TOKENS.map(function (t) {
+      return '<article class="card' + (state.selected === t.id ? " sel" : "") + '"><h3>' + esc(t.short) + '</h3><div class="kind">' + esc(t.issuerKind) +
+        '</div><code>' + esc(t.id) + '</code><button data-id="' + esc(t.id) + '">Check evidence</button></article>';
+    }).join("");
+    Array.prototype.forEach.call(document.querySelectorAll(".card button"), function (b) {
+      b.disabled = state.busy; b.addEventListener("click", function () { run(b.getAttribute("data-id")); });
+    });
+  }
+
+  function claimHtml(c, a) {
+    if (c.status === "differs") return '<span class="badge b-diff">Differs from stated figure</span><p>Stated: <b>' + esc(c.stated) + '</b></p><p class="mono">' +
+      esc(c.direction) + " by " + esc(c.difference) + " " + esc(a.symbol) + " (" + esc(c.percent) + "%)</p><p class='note'>" + esc(c.note) + "</p>";
+    if (c.status === "matches") return '<span class="badge b-ok">Matches stated figure</span><p class="note">' + esc(c.note) + "</p>";
+    return '<span class="badge b-info">No fixed supply claimed</span><p class="note">' + esc(c.note) + "</p>";
+  }
+
+  function renderResult(a, src, m, bundle) {
+    var t = a.token, time = L.blockTimeIso(src.block.timestamp_nanosec);
+    var keys = a.keys;
+    var fc = keys.functionCallKeys.length ? "<p class='mono'>" + keys.functionCallKeys.map(function (k) { return esc(k.receiver) + " → " + esc(k.methods.join(", ") || "any method"); }).join("<br>") + "</p>" : "";
+    $("#detail").innerHTML =
+      '<div class="panel"><h2>' + esc(a.metaName) + " (" + esc(a.symbol) + ') <span class="badge ' + (m === "live" ? "b-live" : "b-snap") + '">' + (m === "live" ? "Live read" : "Cached snapshot") + "</span></h2>" +
+      '<p class="mono">Block ' + esc(src.block.height) + " · " + esc(src.block.hash) + "<br>" + esc(time) + " (" + esc(pkt(time)) + ")" + (m === "snapshot" ? "<br>Snapshot, not current data." : "") + "</p></div>" +
+      '<div class="grid2"><div class="panel"><h4>Total supply on chain</h4><div class="big">' + esc(a.supply) + " " + esc(a.symbol) + '</div><p class="note">Exact: raw ' + esc(a.supplyRaw) + " with " + esc(a.decimals) + " decimals.</p><h4>Against the cited claim</h4>" + claimHtml(a.claim, a) + "</div>" +
+      '<div class="panel"><h4>Access keys at this block</h4><span class="badge ' + (keys.fullAccessCount ? "b-diff" : "b-info") + '">' + keys.fullAccessCount + " full-access · " + keys.functionCallKeys.length + " function-call</span><p>" + esc(keys.summary) + "</p>" + fc +
+      "<h4>Code hash (identity, not verification)</h4><p class='mono'>" + esc(a.codeHash) + "</p><p class='note'>" + esc(a.codeHashNote) + "</p></div></div>" +
+      '<div class="panel"><h4>Sources</h4>' + t.sources.map(function (s) {
+        return "<p><a href='" + esc(s.url) + "' target='_blank' rel='noopener noreferrer'>" + esc(s.title) + "</a> " + (s.verified ? "<span class='badge b-ok'>Directly read</span>" : "<span class='badge b-diff'>Unverified excerpt</span>") +
+          "</p><blockquote>" + esc(s.quote) + "</blockquote><p class='note'>" + esc(s.provenance) + "</p>" + (s.mirror ? "<p class='note'>Mirror: <a href='" + esc(s.mirror) + "' target='_blank' rel='noopener noreferrer'>" + esc(s.mirror) + "</a></p>" : "");
+      }).join("") +
+      '<div class="actions"><button id="dl">Download evidence bundle (.json)</button></div><p class="note mono">SHA-256 ' + esc(bundle.integrity.sha256) + " · computed with " + esc(L.hashEngine() || "?") + "</p></div>";
+    $("#dl").addEventListener("click", function () {
+      var blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json" });
+      var u = URL.createObjectURL(blob), el = document.createElement("a");
+      el.href = u; el.download = "near-claim-check_" + a.symbol + "_" + m + "_block" + src.block.height + ".json"; el.click();
+      setTimeout(function () { URL.revokeObjectURL(u); }, 1000);
+    });
+  }
+
+  function renderError(e, id) {
+    var title = e.kind === "cancelled" ? "Live read cancelled" : "Could not read live data";
+    $("#detail").innerHTML = '<div class="panel err"><h2>' + title + '</h2><p>' + esc(e.message) + "</p><p class='note'>Kind: " + esc(e.kind || "unknown") +
+      ". Nothing from the snapshot is shown in its place. Switch to “Cached snapshot” to view the saved evidence.</p><div class='actions'><button id='retry'>Retry live read</button></div></div>";
+    $("#retry").addEventListener("click", function () { run(id); });
+  }
+
+  var gen = 0, liveCtrl = null;
+  function cancelLive() { if (liveCtrl) { liveCtrl.abort(); liveCtrl = null; } }
+
+  async function run(id) {
+    var my = ++gen; cancelLive();
+    state.selected = id; var m = mode();
+    state.busy = m === "live"; renderCards();
+    if (m === "live") {
+      liveCtrl = new AbortController(); var ctrl = liveCtrl;
+      $("#detail").innerHTML = '<div class="panel"><h2>Reading NEAR mainnet…</h2><p id="prog" class="note">Starting…</p><p class="note">Stops automatically after 75 s. Switching to “Cached snapshot” also cancels it.</p><div class="actions"><button class="ghost" id="cancel">Cancel</button></div></div>';
+      $("#cancel").addEventListener("click", function () { if (my === gen) cancelLive(); });
+    }
+    try {
+      var src = m === "live"
+        ? await L.liveFetch(window.fetch.bind(window), id, { signal: liveCtrl.signal, onProgress: function (i, n, lbl) { var p = document.getElementById("prog"); if (p && my === gen) p.textContent = "Step " + i + " of " + n + ": " + lbl; } })
+        : L.snapshotSource(S, id);
+      if (my !== gen) return;
+      var a = L.analyze(id, src.raw);
+      var bundle = await L.buildBundle(id, m, src);
+      if (my !== gen) return;
+      renderResult(a, src, m, bundle);
+    } catch (e) { if (my === gen) renderError(e, id); }
+    finally { if (my === gen) { state.busy = false; liveCtrl = null; renderCards(); } }
+  }
+
+  $("#verifyFile").addEventListener("change", async function (ev) {
+    var f = ev.target.files[0]; if (!f) return;
+    try { var r = await L.verifyBundle(JSON.parse(await f.text()));
+      $("#verifyOut").textContent = r.ok ? "✓ Intact. SHA-256 " + r.sha256 : "✗ " + r.reason;
+    } catch (e) { $("#verifyOut").textContent = "✗ Not a readable evidence bundle: " + e.message; }
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("input[name=mode]"), function (r) { r.addEventListener("change", function () { gen++; cancelLive(); state.busy = false; renderModeNote(); $("#detail").innerHTML = ""; state.selected = null; renderCards(); if (mode() === "snapshot") run(L.TOKENS[0].id); }); });
+  try { if ((window.matchMedia && matchMedia("(pointer: coarse)").matches) && Math.min(screen.width, screen.height) <= 820) document.documentElement.classList.add("phone"); } catch (e) {}
+  renderModeNote(); renderCards();
+  if (boot) boot.remove();
+  run(L.TOKENS[0].id);
+})();
+
+</script>
+</body>
+</html>

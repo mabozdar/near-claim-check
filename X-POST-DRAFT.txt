@@ -1,0 +1,13 @@
+DRAFT ONLY. Do not post until you have reviewed it, recorded the demo video, and made the repo public.
+
+Built NEAR Claim Check at NEAR HACKATHON 🔍
+
+It puts a token's own docs next to what @NEARProtocol mainnet shows at one exact block: supply, access keys, code hash. Evidence, not verdicts.
+
+Example: REF docs say "fixed 100M" and the chain shows 99,990,503.46 (−0.0095%). The cause isn't verified, so it's shown as "differs".
+
+Read-only · no wallet · free
+Repo: <YOUR PUBLIC REPO LINK>
+
+#NEARHackathon
+[attach your 60–90s demo video]
